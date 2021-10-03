@@ -4,25 +4,34 @@ import matplotlib.pyplot as plt
 import seaborn as sns; sns.set()
 from tqdm import tqdm		# For displaying progress bar.
 
-class Univariate_Linear_Regression:
 
+
+# DESCRIPTION: This is the implementation of Univariate Linear Regression model. 
+# This function is compatible with data that lies in 1-dimensional space.
+# INPUT: Refer to the __init__() function below.
+class Linear_Regression_1D:
+
+	# DESCRIPTION: Function to initialize the Perceptron model.
+	# INPUTS: learning_rate=Determines training speed, iterations=Determines the number of iterations, random_state=Seed to lock randomness when initializing weight and bias.
 	def __init__(self, learning_rate=0.001, iterations=100, random_state=None):
 
 		np.random.seed(random_state)
 		self.weight = np.random.uniform(-10, 10)		# Weight initialization. Random value between -10 and 10.
 		self.bias = np.random.uniform(-10, 10)			# Bias initialization. Random value between -10 and 10.
-		self.learning_rate = learning_rate
-		self.iterations = iterations
 
-	# Use this if the X and y are already separated from each other.
+		self.learning_rate = learning_rate				# Learning rate initialization.
+		self.iterations = iterations					# Initialization of the number of iterations.
+
+	# DESCRIPTION: Use this for loading data if the X and y are already separated from each other.
+	# INPUTS: X=Feature (1-dimensional array), y=Labels.
 	def take_data_raw(self, X, y):
-		self.X = X		# Independent variable (feature).
-		self.y = y		# Dependent variable (target).
+		self.X = X							# Independent variable (feature).
+		self.y = y							# Dependent variable (target).
 
 		self.n_samples = len(self.X)		# Number of samples.
 	
-	# Use this only when the first column of the csv file is the X
-	# and when the second column contains the y values. INPUT: Pandas data frame, where column 0 is X and column 1 is y.
+	# DESCRIPTION: Use this only when the first column of the csv file is the X and when the second column contains the y values.
+	# INPUT: Pandas data frame, where column 0 is X and column 1 is y.
 	def take_data_csv(self, csv_file):
 		df = pd.read_csv(csv_file)
 		self.X = df.iloc[:,0]		# Independent variable (feature).
@@ -30,47 +39,53 @@ class Univariate_Linear_Regression:
 
 		self.n_samples = len(self.X)		# Number of samples.
 
-	# Function to calculate MSE. INPUT: (actual label, predicted label). OUTPUT: error/loss value.
-	def mse(self, y, y_hat):		# MSE (Mean Squared Error).
-		return np.sum((y-y_hat)**2)
+	# DESCRIPTION: Function to calculate MSE. 
+	# INPUT: y=actual label, y_hat=predicted label.
+	# OUTPUT: error/loss value.
+	def mse(self, y, y_hat):
+		return np.sum((y-y_hat)**2)/self.n_samples		# MSE (Mean Squared Error) formula.
 
-	# Function to start training.
+	# DESCRIPTION: Function to start training.
+	# INPUT: No input.
 	def train(self):
 		
-		self.updated_weight = self.weight		# "weight" contains the old weight. We will work with "updated_weight" starting from now on.
-		self.updated_bias = self.bias			# "bias" contains the old weight. We will work with "updated_bias" starting from now on.
+		self.updated_weight = self.weight			# "weight" contains the old weight. We will work with "updated_weight" starting from now on.
+		self.updated_bias = self.bias				# "bias" contains the old weight. We will work with "updated_bias" starting from now on.
 
-		self.errors = []		# Empty list to store the error of each iteration.
+		self.errors = []							# Empty list to store the error of each iteration.
 
 		for i in tqdm(range(self.iterations)):		# This loop will iterate according to the number of iterations.
 			y_hat = self.updated_weight*self.X + self.updated_bias		# "y_hat" is the predicted label.
 
-			error = self.mse(self.y, y_hat)		# Calculating the error of a single iteration.
-			self.errors.append(error)			# Storing the error value to "errors" list.
+			error = self.mse(self.y, y_hat)			# Calculating the error of a single iteration.
+			self.errors.append(error)				# Storing the error value to "errors" list.
 
 			d_weight = (-2/self.n_samples) * np.sum(self.X * (self.y-y_hat))		# Derivative of MSE with the respect to weight (gradient).
 			d_bias = (-2/self.n_samples) * np.sum(self.y - y_hat)					# Derivative of MSE with the respect to bias (gradient).
 
 			self.updated_weight = self.updated_weight - (self.learning_rate*d_weight)		# Gradient descent. Updating "updated_weight".
-			self.updated_bias = self.updated_bias - (self.learning_rate*d_bias)			# Gradient descent. Updating "updated_bias".
+			self.updated_bias = self.updated_bias - (self.learning_rate*d_bias)				# Gradient descent. Updating "updated_bias".
 
 		self.errors = np.asarray(self.errors)		# Converting "errors" list into Numpy array.
 
-	# Use this function to predict single sample.
+	# DESCRIPTION: Use this function to predict single sample.
+	# INPUT: X_test=A single sample to be predicted.
 	def predict_single_sample(self, X_test):
 		return self.updated_weight*X_test + self.updated_bias		# A linear equation with updated weight and bias.
 
-	# Use this function to predict multiple samples. INPUT: "X_test" is an array.
+	# DESCRIPTION: Use this function to predict multiple samples.
+	# INPUT: X_test=Samples to be predicted in form of an array.
 	def predict_multiple_samples(self, X_test):
-		predictions = []
+		predictions = []				# Allocating empty list to store predictions later on.
 		for sample in X_test:			# Iterate over each sample.
 			prediction = self.predict_single_sample(sample)		# Using "predict_single_sample()" function to make a single prediction.
 			predictions.append(prediction)
 		
 		return np.asarray(predictions)
 
-	# Function to plot regression line before training.
-	def plot_before(self, line_color='red', xlabel=None, ylabel=None):
+	# DESCRIPTION: Function to plot regression line before training.
+	# INPUT: line_color=As the name suggests, xlabel=Label for the X axis, ylabel=Label for the Y axis.
+	def visualize_before(self, line_color='red', xlabel=None, ylabel=None):
 		plt.scatter(self.X, self.y)
 
 		x_line = np.linspace(self.X.min(), self.X.max(), 100)		# Creating 100 values between the lowest X (leftmost) and largest X (rightmost).
@@ -80,8 +95,9 @@ class Univariate_Linear_Regression:
 		plt.ylabel(ylabel)
 		plt.show()
 
-	# Function to plot regression line after training.
-	def plot_after(self, line_color='red', xlabel=None, ylabel=None):
+	# DESCRIPTION: Function to plot regression line after training.
+	# INPUT: line_color=As the name suggests, xlabel=Label for the X axis, ylabel=Label for the Y axis.
+	def visualize_after(self, line_color='red', xlabel=None, ylabel=None):
 		plt.scatter(self.X, self.y)
 		
 		x_line = np.linspace(self.X.min(), self.X.max(), 100)		# Creating 100 values between the lowest X (leftmost) and largest X (rightmost).
@@ -91,7 +107,8 @@ class Univariate_Linear_Regression:
 		plt.ylabel(ylabel)
 		plt.show()
 
-	# Function to plot training progress (error value decrease).
+	# DESCRIPTION: Function to plot training progress (error value decrease).
+	# INPUT: print_details=Determines whether to print out the error before and after training.
 	def plot_errors(self, print_details=False):
 		plt.title('Training progress')
 		plt.plot(self.errors)
@@ -105,31 +122,41 @@ class Univariate_Linear_Regression:
 		
 		return
 
-################################################################################################################
 
-class Univariate_Logistic_Regression():
 
+# DESCRIPTION: This is the implementation of Univariate Logistic Regression model. 
+# This function is compatible with data that lies in 1-dimensional space.
+# INPUT: Refer to the __init__() function below.
+class Logistic_Regression_1D:
+
+	# DESCRIPTION: Function to initialize the Perceptron model.
+	# INPUTS: learning_rate=Determines training speed, iterations=Determines the number of iterations, random_state=Seed to lock randomness when initializing weight and bias.
 	def __init__(self, learning_rate=0.001, iterations=100, random_state=None):
 		
-		np.random.seed(random_state)
+		np.random.seed(random_state)					# Setting a seed for locking randomness if the "random_state" is not set to None.
 		self.weight = np.random.uniform(-10, 10)		# Weight initialization. Random value between -10 and 10.
 		self.bias = np.random.uniform(-10, 10)			# Bias initialization. Random value between -10 and 10.
-		self.learning_rate = learning_rate
-		self.iterations = iterations
 
-	# The sigmoid function.
+		self.learning_rate = learning_rate				# Learning rate initialization.
+		self.iterations = iterations					# Initialization of the number of iterations.
+
+	# DESCRIPTION: The sigmoid function.
+	# INPUT: z=Value to be squeezed to the range of between 0 and 1.
+	# OUTPUT: Value between 0 and 1.
 	def sigmoid(self, z):
-		return 1/(1+np.e**(-z))
+		return 1/(1+np.e**(-z))				# This is equivalent to 1/(1 + np.exp(-z)).
 
-	# Use this if the X and y are already separated from each other.
+	# DESCRIPTION: Use this for loading data if the X and y are already separated from each other.
+	# INPUTS: X=Feature (1-dimensional array), y=Labels.
 	def take_data_raw(self, X, y):
-		self.X = X		# Independent variable (feature).
-		self.y = y		# Dependent variable (target).
+		self.X = X							# Independent variable (feature).
+		self.y = y							# Dependent variable (target).
 
 		self.n_samples = len(self.X)		# Number of samples.
 	
-	# Use this only when the first column of the csv file is the X
-	# and when the second column contains the y values. INPUT: data frame of samples.
+	# DESCRIPTION: Use this for loading data only when the first column of the csv file is the X
+	# and when the second column contains the y values. 
+	# INPUT: Pandas data frame of two columns (feature and target respectively).
 	def take_data_csv(self, csv_file):
 		df = pd.read_csv(csv_file)
 		self.X = df.iloc[:,0]		# Independent variable (feature).
@@ -137,7 +164,9 @@ class Univariate_Logistic_Regression():
 
 		self.n_samples = len(self.X)		# Number of samples.
 
-	# INPUT: (actual label, predicted label). OUTPUT: error/loss value.
+	# DESCRIPTION: The implementation of binary cross entropy loss function.
+	# INPUTS: y=Actual label, y_hat=predicted label)
+	# OUTPUT: loss=Loss/error value.
 	def binary_crossentropy(self, y, y_hat):
 		term_1 = y*np.log(y_hat)
 		term_2 = (1-y) * np.log(1-y_hat)
@@ -145,6 +174,8 @@ class Univariate_Logistic_Regression():
 		loss = -(np.sum(term_1 + term_2) / self.n_samples)		# THE DENOMINATOR SHOULD NOT BE HERE!!!!
 		return loss
 	
+	# DESCRIPTION: Function to start training process.
+	# INPUT: No input.
 	def train(self):
 		self.updated_weight = self.weight		# "weight" contains the old weight. We will work with "updated_weight" starting from now on.
 		self.updated_bias = self.bias			# "bias" contains the old weight. We will work with "updated_bias" starting from now on.
@@ -164,22 +195,26 @@ class Univariate_Logistic_Regression():
 		
 		self.errors = np.asarray(self.errors)		# Converting "errors" list into Numpy array.
 
-	# Use this function to predict single sample.
+	# DESCRIPTION: Use this function to predict single sample.
+	# INPUT: X_test=Samples to be predicted (single sample only).
+	# OUTPUT: prediction=The predicted label (rounded).
 	def predict_single_sample(self, X_test):
 		return np.round(self.sigmoid(self.updated_weight*X_test + self.updated_bias))
 
-	# Use this function to predict multiple samples. "X_test" is an array.
+	# DESCRIPTION: Use this function to predict multiple samples. 
+	# INPUT: X_test=List of samples to be predicted.
+	# OUTPUT: predictions=List of predicted labels.
 	def predict_multiple_samples(self, X_test):
-		predictions = []
-		for sample in X_test:
+		predictions = []				# Allocating empty list to store predictions.
+		for sample in X_test:			# Iterate through all testing samples.
 			prediction = self.predict_single_sample(sample)		# Using "predict_single_sample()" function to make a single prediction.
 			predictions.append(prediction)
 		
-		return np.round(np.asarray(predictions))
+		return np.asarray(predictions)
 
-	# Function to plot regression line before training.
-	# INPUT: "x_start" is an integer where should the starting x be (leftmost point). "x_stop" is simply the rightmost point.
-	def plot_before(self, x_start=None, x_stop=None, line_color='red', xlabel=None, ylabel=None):
+	# DESCRIPTION: Function to plot regression line before training.
+	# INPUTS: x_start=Is an integer where should the starting x be (leftmost point), x_stop=Is the rightmost point, line_color=Color of the decision boundary, xlabel=Label for the X axis, ylabel=Label for the Y axis.
+	def visualize_before(self, x_start=None, x_stop=None, line_color='red', xlabel=None, ylabel=None):
 		plt.scatter(self.X, self.y, c=self.y, cmap='winter')
 
 		if x_start == None:
@@ -195,9 +230,9 @@ class Univariate_Logistic_Regression():
 		plt.ylabel(ylabel)
 		plt.show()
 
-	# Function to plot regression line after training.
-	# INPUT: "x_start" is an integer where should the starting x be (leftmost point). "x_stop" is simply the rightmost point.
-	def plot_after(self, x_start=None, x_stop=None, line_color='red', xlabel=None, ylabel=None):
+	# DESCRIPTION: Function to plot regression line after training.
+	# INPUTS: x_start=Is an integer where should the starting x be (leftmost point), x_stop=Is the rightmost point, line_color=Color of the decision boundary, xlabel=Label for the X axis, ylabel=Label for the Y axis.
+	def visualize_after(self, x_start=None, x_stop=None, line_color='red', xlabel=None, ylabel=None):
 		plt.scatter(self.X, self.y, c=self.y, cmap='winter')
 
 		if x_start == None:
@@ -213,6 +248,8 @@ class Univariate_Logistic_Regression():
 		plt.ylabel(ylabel)
 		plt.show()
 
+	# DESCRIPTIOn: Function to plot training progress (error value decrease).
+	# INPUT: print_details=Determines whether or not to print out initial and final error values.
 	def plot_errors(self, print_details=False):
 		plt.title('Training progress')
 		plt.plot(self.errors)
@@ -223,16 +260,19 @@ class Univariate_Logistic_Regression():
 		if print_details:
 			print('Initial error:\t{}'.format(self.errors[0]))
 			print('Final error:\t{}'.format(self.errors[-1]))
-		
-		return
 
-################################################################################################################
 
-class Perceptron_2D():
-	
+
+# DESCRIPTION: This is the implementation of categorical Perceptron model. 
+# This function is compatible with data that lies in 2-dimensional space (as the name suggests).
+# INPUT: Refer to the __init__() function below.
+class Perceptron_2D:
+
+	# DESCRIPTION: Function to initialize the Perceptron model.
+	# INPUTS: learning_rate=Determines training speed, iterations=Determines the number of iterations, random_state=Seed to lock randomness when initializing weight and bias.
 	def __init__(self, learning_rate=0.001, iterations=100, random_state=None):
 
-		np.random.seed(random_state)
+		np.random.seed(random_state)			# Setting a seed for locking randomness if the "random_state" is not set to None.
 		self.weight_0 = np.random.random()		# Initializing weight_0, weight_1, and bias.
 		self.weight_1 = np.random.random()		# Since this function takes 2 input features, hence we need 2 weights.
 		self.bias = np.random.random()			# Initializing bias.
@@ -240,24 +280,29 @@ class Perceptron_2D():
 		self.learning_rate = learning_rate		# Learning rate initialization.
 		self.iterations = iterations			# Initialization of the number of iterations.
 	
-	# We will use sigmoid for the activation function.
+	# DESCRIPTION: We will use sigmoid for the activation function.
+	# INPUTS: x=Value to be squeezed to the range of between 0 and 1.
+	# OUTPUT: Value between 0 and 1.
 	def sigmoid(self, x):
-		return 1/(1 + np.exp(-x))	
+		return 1/(1 + np.exp(-x))		# This is equivalent to 1/(1+np.e**(-x)).
 	
-	# Dereivative of the sigmoid activation function (for backpropagation).
+	# DESCRIPTION: Dereivative of the sigmoid activation function (for backpropagation).
+	# INPUT: x=Value to be mapped using the derivative of sigmoid function.
+	# OUTPUT: The output of the derivative of sigmoid funciton.
 	def d_sigmoid(self, x):
 		return self.sigmoid(x) * (1-self.sigmoid(x))
 
-	# Use this function when the features are already separated with the labels.
+	# DESCRIPTION: Use this function when the features are already separated with the labels.
+	# INPUTS: x=Features, y=Labels.
 	def take_data_raw(self, X, y):
-		self.X = np.asarray(X)
-		self.y = np.asarray(y)
+		self.X = np.asarray(X)					# Features initialization.
+		self.y = np.asarray(y)					# Labels intialziation.
 
 		self.n_samples  = self.X.shape[0]		# Taking the shape of first axis of X (number of samples).
 		self.n_features = self.X.shape[1]		# Taking the shape of second axis of X (number of features).
 
-	# Function to take data directly from CSV file.
-	# INPUT: Pandas data frame of 3 columns, where column 0, 1, and 2 are feature_0, feature_1, and target respectively.
+	# DESCRIPTION: Function to take data directly from CSV file.
+	# INPUTS: csv_file=Pandas data frame of 3 columns, where column 0, 1, and 2 are feature_0, feature_1, and target respectively.
 	def take_data_csv(self, csv_file):
 		df = pd.read_csv(csv_file)
 		self.X = df.iloc[:,:2]		# Independent variables (features). Here we got 2 features.
@@ -266,16 +311,21 @@ class Perceptron_2D():
 		self.n_samples  = self.X.shape[0]		# Number of samples.
 		self.n_features = self.X.shape[1]		# Number of features.
 
-	# Function to calculate RSS (Residual Sum of Squares) error.
-	# Note that this function is meant for calculating the error of a single sample.
+	# DESCRIPTION: Function to calculate RSS (Residual Sum of Squares) error.
+	# Note that this function is meant for calculating the error of a single sample (instead of multiple samples at once).
+	# INPUTS: y=Actual label, y_hat=Predicted label.
+	# OUTPUT: The error value.
 	def rss(self, y, y_hat):
 		return np.square(y_hat-y)
 
-	# RSS derivative (used for backpropagation).
+	# DESCRIPTION: RSS derivative (used for backpropagation).
+	# INPUTS: y=Actual label, y_hat=Predicted label.
+	# OUTPUT: A specific value obtained from the derivative of RSS function.
 	def d_rss(self, y, y_hat):
 		return 2*(y_hat-y)
 	
-	# The training process goes below.
+	# DESCRIPTION: Function to start training process.
+	# INPUT: No input.
 	def train(self):
 		
 		self.updated_weight_0 = self.weight_0		# "weight_0" contains the old weight. We will work with "updated_weight_0" starting from now on.
@@ -318,23 +368,28 @@ class Perceptron_2D():
 			
 			self.errors.append(error_sum)		# Saving the error of a single iteration.
 
-	# Use this function to predict single sample.
+	# DESCRIPTION: Use this function to predict single sample.
+	# INPUT: X_test=Samples to be predicted (single sample only).
+	# OUTPUT: prediction=The predicted label (rounded).
 	def predict_single_sample(self, X_test):
 		z = self.updated_weight_0*X_test[0] + self.updated_weight_1*X_test[1] + self.updated_bias		# This process is exactly the same as forward propagation.
 		prediction = self.sigmoid(z)
 		return np.round(prediction)
 
-	# Use this function to predict multiple samples. "X_test" is an array.
+	# DESCRIPTION: Use this function to predict multiple samples. 
+	# INPUT: X_test=List of samples to be predicted.
+	# OUTPUT: predictions=List of predicted labels.
 	def predict_multiple_samples(self, X_test):
-		predictions = []
+		predictions = []			# Allocating empty list to hold predictions.
 		for sample in X_test:		# Predicting all test samples (might also be the training data itself).
 			prediction = self.predict_single_sample(sample)		# Using "predict_single_sample()" function to make a single prediction.
 			predictions.append(prediction)
 		
 		return np.asarray(predictions)
 
-	# Function to plot the data distribution along with the line before training.
-	def plot_before(self, line_color='red', xlabel=None, ylabel=None):
+	# DESCRIPTION: Function to plot the data distribution along with the line before training.
+	# INPUTS: line_color=Color of the decision boundary, xlabel=Label for the X axis, ylabel=Label for the Y axis.
+	def visualize_before(self, line_color='red', xlabel=None, ylabel=None):
 		m = -(self.bias/self.weight_1) / (self.bias/self.weight_0)		# Finding out m (slope in a linear equation).
 		c = -self.bias/self.weight_1									# Finding out c (constant in a linear equation).
 
@@ -347,8 +402,9 @@ class Perceptron_2D():
 		plt.ylabel(ylabel)
 		plt.show()
 
-	# Function to plot the data distribution along with the line after training.
-	def plot_after(self, line_color='red', xlabel=None, ylabel=None):
+	# DESCRIPTION: Function to plot the data distribution along with the line after training.
+	# INPUTS: line_color=Color of the decision boundary, xlabel=Label for the X axis, ylabel=Label for the Y axis.
+	def visualize_after(self, line_color='red', xlabel=None, ylabel=None):
 		m = -(self.updated_bias/self.updated_weight_1) / (self.updated_bias/self.updated_weight_0)		# Finding out m (slope in a linear equation).
 		c = -self.updated_bias/self.updated_weight_1									# Finding out c (constant in a linear equation).
 
@@ -361,7 +417,8 @@ class Perceptron_2D():
 		plt.ylabel(ylabel)
 		plt.show()
 
-	# Function to plot training progress (error value decrease).
+	# DESCRIPTIOn: Function to plot training progress (error value decrease).
+	# INPUT: print_details=Determines whether or not to print out initial and final error values.
 	def plot_errors(self, print_details=False):
 		plt.title('Training progress')
 		plt.plot(self.errors)
@@ -372,15 +429,159 @@ class Perceptron_2D():
 		if print_details:
 			print('Initial error:\t{}'.format(self.errors[0]))
 			print('Final error:\t{}'.format(self.errors[-1]))
+
+
+
+# DESCRIPTION: This is the implementation of categorical Naive Bayes model. 
+# This function is compatible with data that lies in multidimensional space.
+# INPUT: Refer to the __init__() function below.
+class Categorical_Naive_Bayes:
+	
+	# DESCRIPTION: Function to initialize the Naive Bayes model.
+	# INPUTS: No input.
+	def __init__(self):
+		pass		# There is nothing to be done during the initialization since Naive Bayes does not require parameters like learning rate, weight, bias, K, etc.
+
+	# DESCRIPTION: Function to take the data. Use this function if the features and labels are already separated.
+	# INPUTS: X=Features, y=labels.
+	def take_data_raw(self, X, y):
+		self.X = np.asarray(X)		# Features initialization.
+		self.y = np.asarray(y)		# Labels initialization.
+
+		self.n_samples  = self.X.shape[0]		# Taking the shape of first axis of X (number of samples).
+		self.n_features = self.X.shape[1]		# Taking the shape of second axis of X (number of features).
+
+	# DESCRIPTION: Similar to take_data_raw(). Use this function if the features and labels are stored in a
+	# single CSV file, where the first 2 columns should be the features and the third column is the label.
+	# INPUTS: csv_file=Pandas data frame where column 0 and 1 is X and column 2 is y.
+	def take_data_csv(self, csv_file):
+		df = pd.read_csv(csv_file)
+		self.X = df.iloc[:,:-1]		# Independent variables (features). Here we got 2 features.
+		self.y = df.iloc[:,-1]		# Dependent variable (target).
+
+		self.n_samples  = self.X.shape[0]		# Number of samples.
+		self.n_features = self.X.shape[1]		# Number of features.
+
+	# DESCRIPTION: Function to calculate the prior probability of all classes.
+	# INPUTS: y=List of labels.
+	# OUTPUTS: classes=Prior probability of all classes.
+	def calculate_priors(self, y):
+		unique = np.unique(y, return_counts=True)		# Finding out the number of unique classes and each of the counts.
+
+		classes = [0] * len(unique[0])		# Number of unique classes.
+		classes_count = unique[1]			# Number of samples in each class. (Please refer to the output of "np.unique()").
+
+		for i in range(len(classes)):		# Iterate through all unique classes.
+			classes[i] = classes_count[i]/np.sum(classes_count)		# Calculating the prior probability of each class. (This is based on the formula of prior probability).
+
+		return np.asarray(classes)		# This is the prior probability of all available classes.
+
+	# DESCRIPTION: This function is used to calculate the likelihood in order to be able to complete the following formula --> Posterior = Likelihood * Prior.
+	# INPUTS: x_train_slice=Values of training samples taken from a single feature, y_train=Labels of datapoints in training set, current_x=A feature that we are currently working with, current_y=A label that we are currently working with.
+	# OUTPUTS: likelihood=Value for the likelihood.
+	def calculate_likelihood(self, X_train_slice, y_train, current_X, current_y):
+		X_train_slice = X_train_slice[y_train==current_y]		# Take only a single feature which corresponds to the currently selected target. The result is stored in "X_train_slice".
+																# This function will work for each label (will be called in a loop).
+
+		count_X = len(X_train_slice)									# "count_X" is the number of samples of a specific label.
+		count_current_X = len(np.where(X_train_slice==current_X)[0])	# "count_current_X" is the number of samples of a spscific label of a specific feature (number of samples that have the exact same feature).
+
+		likelihood = count_current_X / count_X					# This is just the formula to calculate likelihood.
+		return likelihood
+
+	# DESCRIPTION: Function to predicte multiple samples that are stored in a single array.
+	# INPUTS: X_train=Features of the training data, X_test=List of samples to be predicted, y_train=Labels of the training data, return_probability=Whether or not you want to take the probability value instead of the final prediction result.
+	# OUTPUTS: predictions=This can be either the actual prediction or the probability value. Keep in mind that this is not the actual probability value. Instead, it is just a value which behaves similarly to the actual probability.
+	def predict_multiple_samples(self, X_train, X_test, y_train, return_probability=False):
+		predictions = []			# Allocating empty list to store predictions.
+
+		for i in range(len(X_test)):					# Iterate through all testing samples.
+			priors = self.calculate_priors(y_train)		# Finding out the prior probability of all classes.
+			posteriors = [0] * len(priors)				# Let the initial posterior probability of all classes being 0.
+
+			for j in range(len(posteriors)):			# Iterate through all possible labels.
+				likelihood = 1							# Set the initial likelihood to 1 (we will multiply this with the likelihood values of each feature).
+
+				for k in range(X_train.shape[1]):		# Iterate through all features.
+					likelihood *= self.calculate_likelihood(X_train[:,k], y_train, X_test[:,k][i], j)		# Calculating the likelihood of each feature.
+				
+				posteriors[j] = likelihood * priors[j]	# Caklculate the posterior probability.
+
+			predictions.append(posteriors)				# Store the posterior probabilities to "predictions" list.
 		
-		return
+		if return_probability:							# If "return_probability" is set to True, then the raw predictions are returned.
+			return np.asarray(predictions)
+
+		else:											# If "return_probability" is set to False, then the rounded predictions are returned.
+			return np.argmax(np.asarray(predictions), axis=1)
 
 
 
+# DESCRIPTION: This is the implementation of KNN (K-Nearest Neighbor) model. 
+# This function is compatible with data that lies in multidimensional space (not limited to 2 dimensions only).
+# INPUT: Refer to the __init__() function below.
+class K_Nearest_Neighbors:
 
+	# DESCRIPTION: Function to initialize the KNN model.
+	# INPUTS: K=The number of nearest neighbor to take into account for predicting the label of test data.
+	def __init__(self, K):
+		self.K = K
 
+	# DESCRIPTION: Function to take the data. Use this function if the features and labels are already separated.
+	# INPUTS: X=Features, y=labels.
+	def take_data_raw(self, X, y):
+		self.X = X		# Features initialization.
+		self.y = y		# Labels initialization.
 
+		self.n_samples = len(self.X)		# Number of samples.
+	
+	
+	# DESCRIPTION: Similar to take_data_raw(). Use this function if the features and labels are stored in a
+	# single CSV file, where the first 2 columns should be the features and the third column is the label.
+	# INPUTS: csv_file=Pandas data frame where the last column (rightmost) is the target, while the rest are the X.
+	def take_data_csv(self, csv_file):
+		df = pd.read_csv(csv_file)
+		self.X = df.iloc[:,:-1].values		# Features initialization.
+		self.y = df.iloc[:,-1].values		# Labels initialization.
 
+		self.n_samples = len(self.X)		# Number of samples.
 
+	# DESCRIPTION: Function to calculate the euclidean distance between a point to another.
+	# INPUTS: x0 and x1 = the points that the distance will be calculated.
+	def calculate_distance(self, x0, x1):
+		return np.sqrt(np.sum((x0-x1)**2))		# Eucliedan distance formula.
 
+	# DESCRIPTION: Function to predict multiple samples. 
+	# INPUTS: X_test=List of datapoints to predict.
+	# OUTPUTS: predictions=Predicted labels for each sample in X_test.
+	def predict_multiple_samples(self, X_test):
+		predictions = []					# Allocating empty list to store predictions.
+		for i in range(len(X_test)):		# Iterate through all testing features.
+			distances = []					# Allocating empty list to store distances between a point in testing list to all training points.
+			for j in range(len(self.X)):	# Iterate through all training features.
+				distance = self.calculate_distance(X_test[i], self.X[j])		# Calculate the distance between a point in testing list to a single point in trainig list.
+				distances.append(distance)	# Store the distance to the "distances" list.
 
+			sorted_indices = np.argsort(distances)		# Sort the "distances" list, but store the indices only. The first element of "sorted_indices" is the index containing the shortest distance.
+
+			k_nearest_neighbors = sorted_indices[:self.K]		# Take only the indices of the several shortest distances. The word 'several' depends on the value of K.
+
+			k_nearest_points = self.X[k_nearest_neighbors]				# Take the K points that are closest to the current testing data. (This line is not very necessary though).
+			k_nearest_labels = self.y[k_nearest_neighbors].astype(int)	# Take the labels of the K points that are closest to the current testing data. The astype(int) function is used just to make np.bincount() working properly.
+
+			most_common = np.bincount(k_nearest_labels).argmax()		# The voting process. Taking the most common K labels.
+
+			predictions.append(most_common)				# Store prediction result to "predictions" list.
+
+		return predictions
+
+	# DESCRIPTION: Function to visualize training data distribution on a 2-dimensional space. This will only work properly if the data is only having 2 features.
+	# INPUTS: No input.
+	def visualize_train_only(self):
+		plt.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap='winter')		# Just a standard scatter plot using Matplotlib where the datapoints colors are determined by the corresponding labels.
+
+	# DESCRIPTION: Function to visualize both training and testing data. This will only work properly if the data is only having 2 features.
+	# INPUTS: X_test=Features of test data, predictions=Predicted labels of the testing data which is obtained from the predict_multiple_samples() function.
+	def visualize_train_test(self, X_test, predictions):
+		plt.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap='winter')		# Scatter plot to display the training data.
+		plt.scatter(X_test[:,0], X_test[:,1], c=predictions, marker='x', s=60, cmap='winter')		# Scatter plot to display testing data along with the predicted labels.
