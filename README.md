@@ -1,1 +1,1 @@
-This module is meant for those who want to use a custom function created by me (Muhammad Ardi Putra).
+This module is meant for those who want to use a custom function created by me (Muhammad Ardi Putra). Currently I am working on machine learning models like linear regression, logistic regression, KNN, etc. Check out the documentation at the "Documentation" folder.
