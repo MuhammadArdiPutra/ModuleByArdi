@@ -117,8 +117,8 @@ class Linear_Regression_1D:
 		plt.show()
 
 		if print_details:
-			print('Initial error:\t{}'.format(self.errors[0]))
-			print('Final error:\t{}'.format(self.errors[-1]))
+			print('Initial error\t: {}'.format(self.errors[0]))
+			print('Final error\t: {}'.format(self.errors[-1]))
 		
 		return
 
@@ -129,7 +129,7 @@ class Linear_Regression_1D:
 # INPUT: Refer to the __init__() function below.
 class Logistic_Regression_1D:
 
-	# DESCRIPTION: Function to initialize the Perceptron model.
+	# DESCRIPTION: Function to initialize the Logistic Regression model.
 	# INPUTS: learning_rate=Determines training speed, iterations=Determines the number of iterations, random_state=Seed to lock randomness when initializing weight and bias.
 	def __init__(self, learning_rate=0.001, iterations=100, random_state=None):
 		
@@ -258,8 +258,8 @@ class Logistic_Regression_1D:
 		plt.show()
 
 		if print_details:
-			print('Initial error:\t{}'.format(self.errors[0]))
-			print('Final error:\t{}'.format(self.errors[-1]))
+			print('Initial error\t: {}'.format(self.errors[0]))
+			print('Final error\t: {}'.format(self.errors[-1]))
 
 
 
@@ -427,8 +427,8 @@ class Perceptron_2D:
 		plt.show()
 
 		if print_details:
-			print('Initial error:\t{}'.format(self.errors[0]))
-			print('Final error:\t{}'.format(self.errors[-1]))
+			print('Initial error\t: {}'.format(self.errors[0]))
+			print('Final error\t: {}'.format(self.errors[-1]))
 
 
 
@@ -482,7 +482,7 @@ class Categorical_Naive_Bayes:
 	def calculate_likelihood(self, X_train_slice, y_train, current_X, current_y):
 		X_train_slice = X_train_slice[y_train==current_y]		# Take only a single feature which corresponds to the currently selected target. The result is stored in "X_train_slice".
 																# This function will work for each label (will be called in a loop).
-
+																
 		count_X = len(X_train_slice)									# "count_X" is the number of samples of a specific label.
 		count_current_X = len(np.where(X_train_slice==current_X)[0])	# "count_current_X" is the number of samples of a spscific label of a specific feature (number of samples that have the exact same feature).
 
@@ -535,9 +535,8 @@ class K_Nearest_Neighbors:
 
 		self.n_samples = len(self.X)		# Number of samples.
 	
-	
 	# DESCRIPTION: Similar to take_data_raw(). Use this function if the features and labels are stored in a
-	# single CSV file, where the first 2 columns should be the features and the third column is the label.
+	# single CSV file, where the rightmost column is the label and the rest are the features.
 	# INPUTS: csv_file=Pandas data frame where the last column (rightmost) is the target, while the rest are the X.
 	def take_data_csv(self, csv_file):
 		df = pd.read_csv(csv_file)
@@ -585,3 +584,179 @@ class K_Nearest_Neighbors:
 	def visualize_train_test(self, X_test, predictions):
 		plt.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap='winter')		# Scatter plot to display the training data.
 		plt.scatter(X_test[:,0], X_test[:,1], c=predictions, marker='x', s=60, cmap='winter')		# Scatter plot to display testing data along with the predicted labels.
+
+
+
+# DESCRIPTION: This is the implemnetation of the SVM model with linear kernel.
+# INPUT: Refer to the __init__() function below.
+class Linear_Support_Vector_Machine_2D:
+
+	def __init__(self, learning_rate=0.001, iterations=100, lambda_=0.01, random_state=None):
+
+		np.random.seed(random_state)
+		self.weights = np.random.random(2)
+		self.bias = np.random.random()
+
+		self.learning_rate = learning_rate
+		self.iterations = iterations
+		self.lambda_ = lambda_
+
+	# DESCRIPTION: Function to take the data. Use this function if the features and labels are already separated.
+	# INPUTS: X=Features, y=labels.
+	def take_data_raw(self, X, y):
+		self.X = X		# Features initialization.
+		self.y = y		# Labels initialization.
+		self.convert_labels()		# Automatically convert all labels 0 to -1.
+
+		self.n_samples = len(self.X)		# Number of samples.
+
+	# DESCRIPTION: Similar to take_data_raw(). Use this function if the features and labels are stored in a
+	# single CSV file, where the rightmost column is the label and the rest are the features.
+	# INPUTS: csv_file=Pandas data frame where the last column (rightmost) is the target, while the rest are the X.
+	def take_data_csv(self, csv_file):
+		df = pd.read_csv(csv_file)
+		self.X = df.iloc[:,:-1].values		# Features initialization.
+		self.y = df.iloc[:,-1].values		# Labels initialization.
+		self.convert_labels()				# Automatically convert all labels 0 to -1.
+
+		self.n_samples = len(self.X)		# Number of samples.
+
+	# DESCRIPTION: Function to convert labels 0 to -1. This is done because SVM works by classifying either 1 or -1 instead of 1 or 0.
+	# INPUT: No input.
+	def convert_labels(self):
+		self.y = np.where(self.y==0, -1, 1)		# For all y, IF y is 0, then convert to -1, else don't convert (remain 1).
+
+	# DESCRIPTION: The equation of the decision boundary.
+	# INPUT: x_i=Current sample, y_i=Current label, w=Weights, b=Bias.
+	def linear_equation(self, x_i, y_i, w, b):
+		return y_i*((np.dot(x_i, w)) - b)
+
+	# DESCRIPTION: The hinge loss function.
+	# INPUT: X_i=Current sample, y_i=Current label, w=Weights, b=Bias.
+	def hinge_loss(self, X_i, y_i):
+		return np.max([0, 1 - (y_i * (np.dot(X_i, self.updated_weights) - self.updated_bias))])
+	
+	# DESCRIPTION: The combination of hinge loss and its regularization term.
+	# INPUT: X_i=Current sample, y_i=Current label, w=Weights, b=Bias, lambda_=Weighting for the regularization term, condition=Will be True if the linear equation result is >= 1.
+	def hinge_reg_loss(self, X_i, y_i, condition):
+		hinge = 1 - (y_i * (np.dot(X_i, self.updated_weights)) - self.updated_bias)					# The hinge loss formula.
+		reg = self.lambda_*(np.sqrt(np.dot(self.updated_weights, self.updated_weights)))			# The regularization term.
+
+		if condition:		# If the condition is True, then we will only use regularization part.
+			return reg
+		else:				# Else both regularization and the hinge loss itself is going to be taken into account.
+			return reg + hinge
+
+	# DESCRIPTION: Function to start training process.
+	# INPUT: No input.
+	def train(self):
+		self.updated_weights = self.weights.astype(float)		# Starting from now on we are going to work with the self.updated_weights and self.updated_bias so that we can compare the old and new weights.
+		self.updated_bias = np.float(self.bias)
+
+		self.losses = []					# Error values without lambda.
+		self.losses_hinge_reg = []			# Error values with regularization (lambda)
+
+		for i in tqdm(range(self.iterations)):		# Iterate according to the number of iterations.
+
+			loss_sum = 0					# For summing the loss without regularization.
+			loss_hinge_reg_sum = 0			# For summing the loss with regularization.
+
+			for j in range(self.n_samples):		# Iterate through all samples.
+				condition = self.linear_equation(self.X[j], self.y[j], self.updated_weights, self.updated_bias) >= 1		# This will be true if the result of linear equation is >= 1.
+				
+				loss_sum += self.hinge_loss(self.X[j], self.y[j])								# Add the current loss to loss_sum. At the end of the iteration we are going to obtain the sum of all loss of each datapoint.
+				loss_hinge_reg_sum += self.hinge_reg_loss(self.X[j], self.y[j], condition)		# Similar to the previous line, but here we also take into account the regularization term.
+
+				if condition:
+					self.updated_weights -= self.learning_rate * (2*self.lambda_*self.updated_weights)		# This is how the weight being updated when the condition is True. Bias is not updated at this part.
+				else:
+					self.updated_weights -= self.learning_rate * ((2*self.lambda_*self.updated_weights) - np.dot(self.X[j],self.y[j]))		# This is how the weight being updated when the condition is False. Bias is updated as well.
+					self.updated_bias -= self.learning_rate * self.y[j]
+				
+			loss_sum = loss_sum / self.n_samples						# Dividing the errors with the number of samples (kinda like the average loss of each datapoints).
+			loss_hinge_reg_sum = loss_hinge_reg_sum / self.n_samples	# Dividing the errors with the number of samples (kinda like the average loss of each datapoints).
+			
+			self.losses.append(loss_sum)			# Keeping track the loss without regularization.
+			self.losses_hinge_reg.append(loss_hinge_reg_sum)		# Keeping track the loss with regularization.
+
+	# DESCRIPTION: Function to make predictions
+	# INPUT: X_test=Features that the labels are going to be predicted, weights=Trained weights, bias=Trained bias.
+	def predict_multiple_samples(self, X_test):
+		predictions = np.dot(X_test, self.updated_weights) - self.updated_bias
+		return np.sign(predictions)			# All negative values are going to be converted to -1, positive values are converted to 1.
+
+	# DESCRIPTIOn: Function to plot training progress (error value decrease).
+	# INPUT: print_details=Determines whether or not to print out initial and final error values.
+	def plot_errors(self, print_details=False):
+		plt.title('Training progress')
+		plt.plot(self.losses_hinge_reg)
+		plt.xlabel('Iterations')
+		plt.ylabel('Error')
+		plt.show()
+
+		if print_details:
+			print('Initial error\t: {}'.format(self.losses_hinge_reg[0]))
+			print('Final error\t: {}'.format(self.losses_hinge_reg[-1]))
+
+	# DESCRIPTION: This is used for the visualization purpose.
+	# INPUT: x=features, w=weights, b=bias, offset=determines whether taking the negative or positive side of the decision boundary.
+	def get_hyperplane_value(self, x, w, b, offset):
+		return (-w[0] * x + b + offset) / w[1]
+
+	# DECRIPTION: Function to display datapoints along with the hyperplane (decision boundary) before training.
+	# INPUT: No input.
+	def visualize_before(self):
+		fig = plt.figure()
+		ax = fig.add_subplot(1, 1, 1)
+		plt.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap='winter')
+		
+		x0_1 = np.amin(self.X[:, 0])
+		x0_2 = np.amax(self.X[:, 0])
+		
+		x1_1 = self.get_hyperplane_value(x0_1, self.weights, self.bias, 0)			# Determining the decision boundary position.
+		x1_2 = self.get_hyperplane_value(x0_2, self.weights, self.bias, 0)
+		
+		x1_1_m = self.get_hyperplane_value(x0_1, self.weights, self.bias, -1)		# Determining the margin position at negative side.
+		x1_2_m = self.get_hyperplane_value(x0_2, self.weights, self.bias, -1)
+		
+		x1_1_p = self.get_hyperplane_value(x0_1, self.weights, self.bias, 1)		# Determining the margin position at positive side.
+		x1_2_p = self.get_hyperplane_value(x0_2, self.weights, self.bias, 1)
+		
+		ax.plot([x0_1, x0_2], [x1_1, x1_2], "k--")			# The decision boundary.
+		ax.plot([x0_1, x0_2], [x1_1_m, x1_2_m], "r")		# Margin at the negative side.
+		ax.plot([x0_1, x0_2], [x1_1_p, x1_2_p], "r")		# Margin at the positive side.
+		
+		x1_min = np.amin(self.X[:, 1])
+		x1_max = np.amax(self.X[:, 1])
+		ax.set_ylim([x1_min - 3, x1_max + 3])				# Determining maximum and minimum value in the scatter plot.
+		
+		plt.show()
+
+	# DECRIPTION: Function to display datapoints along with the hyperplane (decision boundary) after training.
+	# INPUT: No input.
+	def visualize_after(self):
+		fig = plt.figure()
+		ax = fig.add_subplot(1, 1, 1)
+		plt.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap='winter')
+		
+		x0_1 = np.amin(self.X[:, 0])
+		x0_2 = np.amax(self.X[:, 0])
+		
+		x1_1 = self.get_hyperplane_value(x0_1, self.updated_weights, self.updated_bias, 0)			# Determining the decision boundary position.
+		x1_2 = self.get_hyperplane_value(x0_2, self.updated_weights, self.updated_bias, 0)
+	
+		x1_1_m = self.get_hyperplane_value(x0_1, self.updated_weights, self.updated_bias, -1)		# Determining the margin position at negative side.
+		x1_2_m = self.get_hyperplane_value(x0_2, self.updated_weights, self.updated_bias, -1)
+		
+		x1_1_p = self.get_hyperplane_value(x0_1, self.updated_weights, self.updated_bias, 1)		# Determining the margin position at positive side.
+		x1_2_p = self.get_hyperplane_value(x0_2, self.updated_weights, self.updated_bias, 1)
+		
+		ax.plot([x0_1, x0_2], [x1_1, x1_2], "k--")			# The decision boundary.
+		ax.plot([x0_1, x0_2], [x1_1_m, x1_2_m], "r")		# Margin at the negative side.
+		ax.plot([x0_1, x0_2], [x1_1_p, x1_2_p], "r")		# Margin at the positive side.
+		
+		x1_min = np.amin(self.X[:, 1])
+		x1_max = np.amax(self.X[:, 1])
+		ax.set_ylim([x1_min - 3, x1_max + 3])		# Determining maximum and minimum value in the scatter plot.
+		
+		plt.show()
