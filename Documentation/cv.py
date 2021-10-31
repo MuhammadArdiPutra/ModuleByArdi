@@ -270,3 +270,187 @@ class Otsu:
 		plt.yticks([])
 		plt.imshow(self.thresholded_image, cmap='gray')
 		plt.show()
+
+# DESCRIPTION: The class below is the implementation of how HOG features are extracted from an image.
+# It is important to know that currently it only compatible with an image that has the dimension of 128 x 64.
+# Any image of different size will automatically be resized to 128 x 64.
+# INPUT: Refer to the __init__() function below.
+class HOG:
+
+	# DESCRIPTION: This function will got called once a HOG class is instantiated.
+	# INPUT: No input.
+	def __init__(self):
+		# Below are all attributes of HOG class.
+		self.original_image = None				# The original image (already resized to 128 x 64).
+		self.horizontal_derivative = None		# The resulting image after applying horizontal_edge_kernel.
+		self.vertical_derivative = None			# The resulting image after applying vertical_edge_kernel.
+		self.edge_magnitude = None				# abs(horizontal derivative) + abs(vertical derivative).
+		self.edge_direction = None				# atan(v/h) * (180/pi).
+		self.cells_histograms = None			# Histogram of all cells.
+		self.blocks_histograms = None			# Histogram of all blocks. This is our HOG features.
+		self.cell_size = 8						# We will divide the image into cells of 8 x 8 pixels.
+		self.block_size = 2						# We will divide the image into blocks of 2 x 2 cells
+
+		# Kernel for taking horizontal derivative.
+		self.horizontal_edge_kernel = np.asarray([[0, 0, 0], 
+												  [-1,0, 1], 
+												  [0, 0, 0]])
+
+		# Kernel for taking vertical derivative.
+		self.vertical_edge_kernel = np.asarray([[0,-1, 0], 
+												[0, 0, 0], 
+												[0, 1, 0]])
+	
+	# DESCRIPTION: Function to load image and directly convert it to grayscale and resize to 128 x 64.
+	# INPUT: image_path=The directory location of the image.
+	def load_image(self, image_path):
+		image = cv2.imread(image_path, flags=0)			# Read the image as grayscale.
+		image = cv2.resize(image, dsize=(64, 128))		# Resize to 128 x 64 (h x w). Note that cv2 by default takes the input of w x h instead.
+		self.original_image = image						# Store the processed image to the original_image attribute.
+	
+	# DESCRIPTION: Function to calculate horizontal derivative.
+	# INPUT: A 3 x 3 region of the currently selected (sliced) image.
+	def first_derivative_h(self, sliced):
+		return np.dot(sliced.flatten(), self.horizontal_edge_kernel.flatten())
+
+
+	# DESCRIPTION: Function to calculate vertical derivative.
+	# INPUT: A 3 x 3 region of the currently selected (sliced) image.
+	def first_derivative_v(self, sliced):
+		return np.dot(sliced.flatten(), self.vertical_edge_kernel.flatten())
+
+	# DESCRIPTION: Function to start convolution process (calculating derivatives, edge magnitude and edge direction).
+	# Keep in mind that even though "convolve()" method here is recycled from "Convolution" class, yet there are several differences here and there.
+	# One of the difference is that here zero padding is not applied.
+	# INPUT: No input.
+	def convolve(self):
+
+		# Initially both horizontal and vertical derivative images are all zeros. 
+		# Those zero values are then going to get updated using "first_derivative_v()" and "first_derivative_h()" function.
+		self.horizontal_derivative = np.zeros(shape=(self.original_image.shape[0], self.original_image.shape[1]))
+		self.vertical_derivative = np.zeros(shape=(self.original_image.shape[0], self.original_image.shape[1]))
+
+		for i in tqdm(range(1, self.original_image.shape[0]-1)):					# Iterate downwards.
+			for j in range(1, self.original_image.shape[1]-1):						# Iterate to the right. This nested loop will stride to the right first before moving to the next row.
+				sliced = self.original_image[i-1:i+2, j-1:j+2]						# Take only the 3x3 image region.
+				self.horizontal_derivative[i,j] = self.first_derivative_h(sliced)	# Perform filtering on the current 3x3 region using horizontal edge kernel.
+				self.vertical_derivative[i,j] = self.first_derivative_v(sliced)		# Perform filtering on the current 3x3 region usin vertical edge kernel.
+
+		self.edge_magnitude = np.abs(self.horizontal_derivative) + np.abs(self.vertical_derivative)		# Combining horizontal and vertical derivative.
+		edge_direction = np.arctan(self.vertical_derivative/self.horizontal_derivative) * (180/np.pi)	# Finding the gradient direction.
+		self.edge_direction = np.nan_to_num(edge_direction) + 90										# The resulting gradient direction is added by 90 since originally it ranges between -90 to 90 instead of 0 to 180.
+
+	# DESCRIPTION: Function to determine the right bin given an angle.
+	# INPUT: angle=Angle in degree ranging from 0 to 180 (inclusive).
+	# OUTPUT: A bin code (determines the index of an array).
+	def determine_bin(self, angle):
+		if 0 <= angle and angle < 20:
+			return 0
+		elif 20 <= angle and angle < 40:
+			return 1
+		elif 40 <= angle and angle < 60:
+			return 2
+		elif 60 <= angle and angle < 80:
+			return 3
+		elif 80 <= angle and angle < 100:
+			return 4
+		elif 100 <= angle and angle < 120:
+			return 5
+		elif 120 <= angle and angle < 140:
+			return 6
+		elif 140 <= angle and angle < 160:
+			return 7
+		elif 160 <= angle and angle <= 180:
+			return 8
+
+	# DESCRIPTION: Function to create histogram. This will return a 9-element array containing the number of occurences of a particular angle range.
+	# So far the "magnitude_region" parameter is still useless since in this case we don't take into account edge magnitude to actually construct the features.
+	# As you can see the "determine_bin()" function above, the bin is still determined only by the angle.
+	# INPUT: magnitude_region=A cell of 8x8 pixels taken from the image showing edge magnitude only.
+	# INPUT: direction_region=A cell of 8x8 pixels taken from the image showing edge direction only.
+	# OUTPUT: A histogram of 9 bins.
+	def create_histogram(self, magnitude_region, direction_region):
+		histogram = np.zeros(9)								# Allocating all-zero array.
+		flattened_magnitude = magnitude_region.flatten()
+		flattened_direction = direction_region.flatten()
+
+		for i in range(len(flattened_magnitude)):
+			bin = self.determine_bin(flattened_direction[i])		# Find the right bin for the current angle.
+			histogram[bin] += 1										# Increase the bin value of the selected index.
+		
+		return histogram				# Return the resulting histogram.
+	
+	# DESCRIPTION: This function is used to create a histogram for each cell. Each cell consists of 8x8 pixels. Thus the sum of the histogram of every cell will be 64.
+	# INPUT: No input.
+	def create_histogram_for_every_cell(self):	
+		cells_histograms = []			# Allocating empty list for storing histograms of each cell.
+		for i in range(0, self.edge_magnitude.shape[0], self.cell_size):						# Stride downwards, jumps every 8 pixels (according to "cell_size").
+			for j in range(0, self.edge_magnitude.shape[1], self.cell_size):					# Stride to the right, jumps every 8 pixels (according to "cell_size").
+				cell_magnitude = self.edge_magnitude[i:i+self.cell_size, j:j+self.cell_size]	# Take 8x8 region from the image containing edge magnitude.
+				cell_direction = self.edge_direction[i:i+self.cell_size, j:j+self.cell_size]	# Take 8x8 region from the image containing edge direction.
+				cell_histogram = self.create_histogram(cell_magnitude, cell_direction)			# Create the histogram for every cell. If the cell size is 8x8, then the sum of the histogram array will be 64.
+				cells_histograms.append(cell_histogram)		# Every element of this list is a histogram, so at the end of the day this will be a 2-dimensional list.
+
+		cells_histograms = np.asarray(cells_histograms)			# Convert the list to Numpy array.
+		cells_histograms = cells_histograms.reshape(16, 8, 9)	# Our original image has the size of 128x64, thus if it is grouped into 8x8 cells, then we will got 16 cells x 8 cells, where each of those cells consists of a histogram of 9 elements.
+		self.cells_histograms = cells_histograms				# Store the histogram of all cells to "cells_histograms" attribute.
+
+	# DESCRIPTION: Each block consists of 2x2 cells that strides to the right first before going to the next row.
+	# Note that the stride is 1, hence these blocks are overlapping. The default "block_size" is 2x2, thus a single block consists of 4 cells.
+	# INPUT: No input.
+	def create_histogram_for_every_block(self):
+		blocks_histograms = []			# Allocating emtpy list for storing histograms of each block.
+		for i in range(self.cells_histograms.shape[0]-1):				# Stride downwards.
+			for j in range(self.cells_histograms.shape[1]-1):			# Stride to the right. The nested loop goes to the right first prior to moving to the next row.
+				block_histogram = self.cells_histograms[i:i+self.block_size, j:j+self.block_size]		# The topleft cell becomes the center.
+				blocks_histograms = np.append(blocks_histograms, block_histogram)						# Put all histograms to "blocks_histogram" array.
+		
+		self.blocks_histograms = blocks_histograms														# Then store it in the "blocks_histograms" attribute.
+																										# Note that we don't convert to the original dimension like what I did in the "create_histogram_for_every_cell()" function since it is not really necessary to do so.
+																										# The "blocks_histograms" attribute is the HOG feature.
+
+	# DESCRIPTION: Use this function in case you don't want to call the methods one by one in order to take the HOG features.
+	# INPUT: No input.
+	# OUTPUT: HOG features.
+	def extract_features(self):
+		self.convolve()								# Start the convolution process. This will produce "horizontal_derivative", "vertical_derivative", "edge_magnitude", and "edge_direction" attribute.
+		self.create_histogram_for_every_cell()		# Start creating the histogram of every cell. This produces "cells_histograms" attribute.
+		self.create_histogram_for_every_block()		# Start concatenating the histogram of every 2x2 cells, where each cell consists of 9 bins. This produces "blocks_histograms" attribute.
+
+		return self.blocks_histograms				# The "blocks_histograms" attribute contains the HOG features.
+
+	# DESCRIPTION: Show the original image (already resized to 128x64 and grayscaled).
+	# INPUT: No input.
+	def show_original(self):
+		plt.grid()
+		plt.imshow(self.original_image, cmap='gray')
+		plt.show()
+	
+	# DESCRIPTION: Show the horizontal derivative image.
+	# INPUT: No input.
+	def show_horizontal_derivative(self):
+		plt.grid()
+		plt.imshow(self.horizontal_derivative, cmap='gray')
+		plt.show()
+
+	# DESCRIPTION: Show the vertical derivative image.
+	# INPUT: No input.
+	def show_vertical_derivative(self):
+		plt.grid()
+		plt.imshow(self.vertical_derivative, cmap='gray')
+		plt.show()
+	
+	# DESCRIPTION: Show the overall edge magnitude (abs(vertical_d) + abs(horizontal_d)).
+	# INPUT: No input.
+	def show_edge_magnitude(self):
+		plt.grid()
+		plt.imshow(self.edge_magnitude, cmap='gray')
+		plt.show()
+	
+	# DESCRIPTION: Show the edge direction. Note that in this version the edge direction does not take into account the amount of edge magnitude.
+	# INPUT: No input.
+	def show_edge_direction(self):
+		plt.grid()
+		plt.imshow(self.edge_direction, cmap='gray')
+		plt.show()
+	
